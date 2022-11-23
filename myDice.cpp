@@ -3,7 +3,7 @@
 //  MyDice
 //
 //  Created by 김태욱 on 2022/11/19.
-// test
+// 되는건가?
 
 /*
     printf("▁▁▁▁▁▁▁\n");
