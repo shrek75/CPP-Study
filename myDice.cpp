@@ -214,14 +214,35 @@ void RerollDice(int &x_1)
     x_1 = rand()%6+1;
 }
 
-void PrintDiceModel(int x)
+//주사위 출력형태 버전추가
+void PrintDiceModel(int x,int version = 1)
 {
+    switch(version)
+    {
+    case 1:
     if(x==1) printf("  ⚀");
     else if(x==2) printf("  ⚁");
     else if(x==3) printf("  ⚂");
     else if(x==4) printf("  ⚃");
     else if(x==5) printf("  ⚄");
     else if(x==6) printf("  ⚅");
+    break;
+
+    case 2:
+    if(x==1) printf("⚀");
+    else if(x==2) printf("⚁");
+    else if(x==3) printf("⚂");
+    else if(x==4) printf("⚃");
+    else if(x==5) printf("⚄");
+    else if(x==6) printf("⚅");
+    break;
+
+    default:
+    break;
+    }
+
+    
+
 }
 void PrintDiceModel(int *x)//5개출력
 {
@@ -251,14 +272,27 @@ void PrintFixDice(int *dice,bool* fixdice)
 
     }
 }
+//리롤 목록에 출력하는 리롤주사위
 void PrintRerollDice(int *dice,bool* fixdice)
 {
-    gotoxy(6,23);
+    
     for(int i=0;i<5;i++)
     {
         gotoxy(6+i*3,23);
         if(!fixdice[i])  PrintDiceModel(dice[i]);
     }
+    gotoxy(19,23); //커서가 마지막주사위 가려서 넣음;
+}
+//리롤할때 출력하는 리롤 주사위
+void PrintRerollDiceGame(int *dice,bool* fixdice)
+{
+    
+    for(int i=0;i<5;i++)
+    {
+        gotoxy(2+i,24);
+        if(!fixdice[i])  PrintDiceModel(dice[i],2);
+    }
+    gotoxy(2+5,24); //커서가 마지막주사위 가려서 넣음;
 }
 void GamePlay()
 {
@@ -299,6 +333,8 @@ void GamePlay()
             PrintUserCursor(x,y);
                   //q기록 w리롤  스페 방향키
             //턴 0이면 리롤못하게해야함
+            //턴 0이면 리롤인 주사위 다 고정으로 이동시키고 다시화면 출력후 
+            // 주사위 결과(풀하우스) 출력후 ( 리롤칸에 하면될듯) q키빼고 다른키는 안먹히게 해야함(이건햇음)
             nInput =_getch();
             switch(nInput)
             {
@@ -314,6 +350,8 @@ void GamePlay()
                 break;
 
                 case SPACE:
+                if(individual_turn == 0)    break;
+
                 if(y==0){
                     fixdice[x] = 0;
                 }
@@ -324,6 +362,7 @@ void GamePlay()
 
                 case 27:
                 {
+                    if(individual_turn == 0)    break;
                     nInput = _getch();
                     if(nInput == 91)
                     {
@@ -390,7 +429,7 @@ void GamePlay()
                 if(!fixdice[i]) RerollDice(dice[i]);
             }
             individual_turn --;
-            PrintDiceModel(dice);
+            PrintRerollDiceGame(dice,fixdice);
             //풀하우스인지 뭔지 이런거 프린트 해주는 함수 넣어야함
             
             //주사위보여주고 3초대기
