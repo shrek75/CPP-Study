@@ -1,6 +1,16 @@
 # Created by https://www.toptal.com/developers/gitignore/api/vs,c++,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=vs,c++,macos
 
+# 확장자없는 파일무시 3줄
+# Ignore all
+*
+
+# Unignore all with extensions
+!*.*
+
+# Unignore all dirs
+!*/
+
 ### C++ ###
 # Prerequisites
 *.d
