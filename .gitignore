@@ -11,6 +11,12 @@
 # Unignore all dirs
 !*/
 
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
 ### C++ ###
 # Prerequisites
 *.d
