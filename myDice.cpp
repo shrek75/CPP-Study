@@ -272,7 +272,7 @@ void PrintFixDice(int *dice,bool* fixdice)
 
     }
 }
-//리롤 목록에 출력하는 리롤주사위
+//리롤 목록에 출력하는 리롤주사위d
 void PrintRerollDice(int *dice,bool* fixdice)
 {
     
