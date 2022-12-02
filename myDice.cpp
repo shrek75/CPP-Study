@@ -4,6 +4,8 @@
 //  yacht게임 모작연습
 //  Created by 김태욱 on 2022/11/19.
 // 
+// 해야할거 :  2.vs AI 만들기 3.vs aI 고수
+// 이름 로그인 구현하기
 
 
 #include <iostream>
@@ -19,7 +21,9 @@ using namespace std;
 
 enum MAINMENU{
     EXIT = 0,
-    START = 1
+    START = 1, //로컬2p
+    START_AI =2,
+    START_AI_REMAKE =3
 };
 
 //mac os에서 방향키다름 그리고 27 , 91 후에 나옴 방향키
@@ -37,6 +41,7 @@ enum KEYBOARD{
 };
 
 enum SCOREBOARD{
+    TURN = 0,
     Aces = 1,
     Deuces = 2,
     Threes,
@@ -51,7 +56,21 @@ enum SCOREBOARD{
     Yacht = 12,
     _35bonus = 13,
     SubTotal = 14,
-    Total = 15
+    Total = 15,
+    //기록여부
+    OX_Aces = 16,
+    OX_Deuces = 17,
+    OX_Threes,
+    OX_Fours,
+    OX_Fives,
+    OX_Sixes,
+    OX_Choice,
+    OX__4ofakind,
+    OX_FullHouse,
+    OX_S_Straight,
+    OX_L_Straight,
+    OX_Yacht
+    
 };
 
 
@@ -84,26 +103,32 @@ int _getch(void)
 void PrintMainMenu()
 {
     gotoxy(3,1);
-    printf("Start\n");
-    gotoxy(3,2);
+    printf(" 로컬2P\n");
+    gotoxy(3,4);
     printf("Exit\n");
-    gotoxy(3,5);
+    gotoxy(3,2);
+    printf("vs AI(초급)\n");
+    gotoxy(3,3);
+    printf("vs AI(중급)(미완성)\n");
+    gotoxy(3,7);
     printf("방향키와 \'space\'키\n");
 }
+//초기화면
 void PrintUserCursor(int& y)
 {
     if (y <= 0)
     {
         y = 0;
     }
-    else if (y >= 1)
+    else if (y >= 3)
     {
-        y = 1;
+        y = 3;
     }
  
     gotoxy(1, 1 + y);
     cout << ">";
 }
+//주사위 고를때 커서
 void PrintUserCursor(int& x,int& y)
 {
     //xy보정
@@ -131,9 +156,9 @@ void PrintUserCursor2(int& y)
     cout << ">";
     gotoxy(1,1);
 }
-void PrintGameScoreBoard()
+void PrintGameScoreBoard(int *score_p1,int *score_p2)
 {
-    gotoxy(4,1); printf("Turn"); gotoxy(14,1); printf("Me"); gotoxy(20,1); printf("AI");
+    gotoxy(4,1); printf("Turn"); gotoxy(14,1); printf("P1"); gotoxy(20,1); printf("P2");
     gotoxy(5,2); printf("/ 12");
     gotoxy(2,4); printf("Aces");
     gotoxy(2,5); printf("Deuces");
@@ -153,8 +178,51 @@ void PrintGameScoreBoard()
     gotoxy(2,20); printf("Total");
     gotoxy(1,21); printf("***********************");
     gotoxy(1,22); printf("고정");
+    //점수출력1
+    for(int i =0; i<12; i++)
+    {
+        //기록이 되어있다면
+        if(score_p1[i+1+15]!=0)
+        {
+            if(i<=5) gotoxy(14,i+4);
+            else gotoxy(14,i+4+3);
+            printf("%d",score_p1[i+1]);
+        }
+        if(score_p2[i+1+15]!=0)
+        {
+            if(i<=5) gotoxy(20,i+4);
+            else gotoxy(20,i+4+3);
+            printf("%d",score_p2[i+1]);
+        }
+    }
+    //점수출력2 서브토탈 토탈
+    gotoxy(13,10); printf("%d",score_p1[SubTotal]);
+    gotoxy(19,10); printf("%d",score_p2[SubTotal]);
+    gotoxy(14,20); printf("%d",score_p1[Total]);
+    gotoxy(20,20); printf("%d",score_p2[Total]);
+    // 점수출력3 보너스
+    if(score_p1[_35bonus]!= 0)  {
+    gotoxy(14,11); 
+    printf("%d",score_p1[_35bonus]);}
+    if(score_p2[_35bonus]!= 0)  {
+    gotoxy(20,11); 
+    printf("%d",score_p2[_35bonus]);}
 
+    //누구차례인지 표시
+    if(score_p1[TURN]!=score_p2[TURN])
+    {
+        gotoxy(13,1);printf(">");
+        gotoxy(16,1);printf("<");
+    }
+    else{
+        gotoxy(19,1);printf(">");
+        gotoxy(22,1);printf("<");
+    }
+    //턴표시
+    gotoxy(2,2);
+    printf("%02d",score_p1[TURN]);
 
+    gotoxy(1,1);
 }
 //기록
 void PrintPage_1(){}
@@ -203,7 +271,8 @@ MAINMENU MainMenu()
     switch(y)
     {
             case 0: return START;
-            case 1: return EXIT;
+            case 3: return EXIT;
+            default: return EXIT;
     }
     if(nInput == 27)
     {
@@ -233,6 +302,13 @@ void RerollDice(int &x_1)
 {
     x_1 = rand()%6+1;
 }
+void RerollDiceAll(int *dice,bool *fixdice)
+{
+    for(int i=0; i<5; i++)
+    {
+        if(!fixdice[i]) RerollDice(dice[i]);
+    }
+}
 
 //주사위 출력형태 버전추가
 void PrintDiceModel(int x,int version = 1)
@@ -260,9 +336,6 @@ void PrintDiceModel(int x,int version = 1)
     default:
     break;
     }
-
-    
-
 }
 void PrintDiceModel(int *x)//5개출력
 {
@@ -303,7 +376,7 @@ void PrintRerollDice(int *dice,bool* fixdice)
     }
     gotoxy(19,23); //커서가 마지막주사위 가려서 넣음;
 }
-//리롤할때 출력하는 리롤 주사위
+//리롤할때 게임판에 출력하는 리롤 주사위
 void PrintRerollDiceGame(int *dice,bool* fixdice)
 {
     
@@ -338,25 +411,26 @@ int ScoreAlgorithm(int *dice, int mode)
         return dice[0]+dice[1]+dice[2]+dice[3]+dice[4];
 
         case _4ofakind:
-        for(int i=0;i<5;i++)
+        for(int i=0;i<6;i++)
         {   //4개이상
             if(n[i]>=4) return dice[0]+dice[1]+dice[2]+dice[3]+dice[4];
         }
         return 0;
 
         case FullHouse:
-        for(int i=0;i<5;i++)
+        for(int i=0;i<6;i++)
         {
         //같은거 3개
         if(n[i]==3)
         {
-            for(int j=0;j<5; j++)
+            for(int j=0;j<6; j++)
             {
                 if(n[j]==2) return dice[0]+dice[1]+dice[2]+dice[3]+dice[4]; 
             }
         }
-        return 0;
         }
+        return 0;
+        
 
         case S_Straight:
     {
@@ -389,7 +463,7 @@ int ScoreAlgorithm(int *dice, int mode)
     }
 
         case Yacht:
-        for(int i=0;i<5;i++)
+        for(int i=0;i<6;i++)
         {   
             if(n[i]==5) return 50;
         }
@@ -399,6 +473,7 @@ int ScoreAlgorithm(int *dice, int mode)
         return 0;
     }
 }
+// 풀하우스 이런거 알려주는거
 int YachtAlgorithm(int *dice)
 {
     int n[6] = {0};
@@ -410,7 +485,7 @@ int YachtAlgorithm(int *dice)
     }
 
     //fullhouse/4ofakind/yacht
-    for(int i=0;i<5;i++)
+    for(int i=0;i<6;i++)
     {
         //같은거 3개이상
         if(n[i]>=3)
@@ -423,7 +498,7 @@ int YachtAlgorithm(int *dice)
             }
 
             //3개
-            for(int j=0;j<5; j++)
+            for(int j=0;j<6; j++)
             {
                 if(n[j]==2) return FullHouse; 
             }
@@ -469,30 +544,35 @@ void PrintAlgorithm(int *dice)
         printf("!!!YACHT!!! <<<<<"); break;
         default: break;
     }
-    
-
 }
+//기록용 임시점수 출력함수 // printusercursor함수 다음에 호출되어야함
+void PrintReportTempScore(int *dice,int y,int whoseturn)
+{
+    int x =14;
+    if(whoseturn == -1) x = 20;
+    if(y<=5) gotoxy(x,y+4);
+    else if(y>=6) gotoxy(x,y+4+3);
+    printf("%d ",ScoreAlgorithm(dice,y+1));
+}
+
+
 void GamePlay()
 {
-    int nTurn = 1;//턴
+    int whoseturn = 1; //1 p1턴 -1 p2턴
     int individual_turn = 3; //3번가능한거
-    int myScore[15] = {0}; //점수기록판
-    int aIScore[15] = {0};
+    int myScore[32] = {0}; //점수기록판
+    int aIScore[32] = {0};
     int dice[5]; //5개 주사위값
     bool fixdice[5] = {0}; //1고정 0리롤
-    int unfix_number = 5; //fix안한개수
     int nPage =3; //보고있는페이지
     int x =0;
     int y = 0;
     int nInput =0;
-    for(int i =0;i<5;i++)
-    {
-        if(!fixdice[i]) RerollDice(dice[i]);
-    }
+    RerollDiceAll(dice,fixdice);
+    myScore[TURN]++;
 
     while(true){
     clean();
-    PrintGameScoreBoard();
     switch(nPage)
     {
         case 1://기록
@@ -501,11 +581,14 @@ void GamePlay()
             //그리고 상대턴으로 넘어가야함
             //12턴 막턴끝나면 겜끝나야함
             //방향키 위아래로할때마다 기록할수 있는 점수 나와야함
-            // 이미기록되어있는 점수가있으면 그게 나와야함(혹은 이미나와있음)
+            // 이미기록되어있는 점수가있으면 그게 나와야함(혹은 이미나와있음) 점수기록판을 덮어씌우면 되겟다
             int nInput = 0;
             PrintPage_1();
             PrintFixDice(dice,fixdice);
             PrintUserCursor2(y);
+            PrintReportTempScore(dice,y,whoseturn);
+            // 여기에 printgamescoreboard 함수 와야됨 점수 기록된버전으로.
+            PrintGameScoreBoard(myScore,aIScore);
             nInput =_getch();
             //왼쪽방향키(2페이지가기) 위아래 커서옮기기
             if(nInput == 27)
@@ -535,7 +618,53 @@ void GamePlay()
             //스페이스(결정)
             if(nInput == SPACE)
             {
+                //기록
+                if(whoseturn == 1){
+                if(myScore[y+1+15] != 0) break; //기록되어있으면 못하게
+                {
+                myScore[y+1+15] = 1; //기록여부
+                myScore[y+1] = ScoreAlgorithm(dice,y+1); //점수저장
+                myScore[Total] += myScore[y+1]; //토탈에도 갱신
+                if(y>=0 && y<=5)
+                myScore[SubTotal] += myScore[y+1]; //서브토탈도 갱신
+                if(myScore[SubTotal]>=63) myScore[_35bonus] = 35; //보너스체크
+                }
+                }
+                else
+                {
+                if(aIScore[y+1+15] != 0) break;
+                aIScore[y+1+15] = 1;
+                aIScore[y+1] = ScoreAlgorithm(dice,y+1);
+                aIScore[Total] += aIScore[y+1]; //토탈에도 갱신
+                if(y>=0 && y<=5)
+                aIScore[SubTotal] += aIScore[y+1];
+                if(aIScore[SubTotal]>=63) aIScore[_35bonus] = 35; //보너스체크
+                }
+                
+                
 
+                //턴 끝나서 상대턴을 위해 변수 초기화
+                individual_turn = 3;
+                x=0;
+                y=0;
+                for(int i =0;i<5;i++)
+                {
+                    fixdice[i] = 0;
+                }       
+                RerollDiceAll(dice,fixdice);
+                //차례 넘겨주기
+                whoseturn *= -1;
+                if(myScore[TURN]>aIScore[TURN]) aIScore[TURN]++;
+                else myScore[TURN]++;
+                //게임끝내는조건
+                if(myScore[TURN]>12)
+                {
+                    nPage =4; //결과창
+                    break;
+                }
+
+                nPage = 3;
+                break;
             }
         }
         break;
@@ -558,6 +687,7 @@ void GamePlay()
             PrintFixDice(dice,fixdice);
             PrintRerollDice(dice,fixdice);
             PrintAlgorithm(dice);
+            PrintGameScoreBoard(myScore,aIScore);
             PrintUserCursor(x,y);
                   //q기록 w리롤  스페 방향키
             //턴 0이면 리롤못하게해야함 o
@@ -630,6 +760,7 @@ void GamePlay()
             //고정된 다이스 프린트함수
             PrintFixDice(dice,fixdice);
             PrintRerollDiceGame(dice,fixdice);
+            PrintGameScoreBoard(myScore,aIScore);
             gotoxy(2,25);
             nInput =_getch();
             //왼쪽방향키(2페이지가기)
@@ -655,10 +786,7 @@ void GamePlay()
             //w 던지기
             if(nInput == w || nInput == W)
             {
-            for(int i =0;i<5;i++)
-            {
-                if(!fixdice[i]) RerollDice(dice[i]);
-            }
+            RerollDiceAll(dice,fixdice);
             individual_turn --;
 
             //출력대기모션
@@ -680,13 +808,11 @@ void GamePlay()
             break;
             }
 
-            //스페이스 (흔들기) ( 미완성)
-            if(nInput == SPACE)
+            //스페이스 (흔들기) ( 미완성) 버그있음 흔들기하고 돌아가기해서 그걸로 기록가능함
+            if(nInput == SPACE) 
             {
-            for(int i =0;i<5;i++)
-            {
-                if(!fixdice[i]) RerollDice(dice[i]);
-            }
+            break;   //버그있어서 브레이크 걸어둠
+            RerollDiceAll(dice,fixdice);
             
             //흔들기 효과 넣으면 좋을듯 그래서 넣었스비다
             PrintPage_3test();
@@ -701,6 +827,14 @@ void GamePlay()
 
         }
         break;
+        case 4://결과임시 나중에 더 예쁘게합시다
+        gotoxy(1,1);
+        printf("게임끝!\n");
+        sleep(5);
+        return;
+        
+
+        default: break;
     }
     
     }
@@ -726,7 +860,5 @@ int main(void) {
             return 0;
         }
     }
-
-
     return 0;
 }
