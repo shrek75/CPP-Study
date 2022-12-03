@@ -1,12 +1,12 @@
 #include <stdio.h>
 int main()
 {
-    char a[21] = {0};
-    scanf("%s",a);
+    //실수 float %f < double %lf(long float)
+    //정수 int  %d  < long long int(%lld)
 
-    for(int i=0; i< sizeof(a);i++)
-    {
-        if(a[i]!='\0')  printf("\'%c\'\n",a[i]);
-    }
+    int a; //정수형 실수형 데이터
+    scanf("%o",&a); // 야 내가입력하는거 8진수야
+    printf("%d",a); // 야 여기안에있는 데이터 10진수로 출력해.
+
     return 0;
 }
