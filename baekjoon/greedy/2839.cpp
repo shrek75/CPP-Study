@@ -9,7 +9,7 @@ int main()
     int remainderOfFive = 0;
     int quotientOfFive = 0;
     scanf("%d",&nInput);
-    nInput = temp;
+    temp = nInput;
     
     if(temp >=15)
     {
