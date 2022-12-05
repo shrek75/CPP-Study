@@ -275,6 +275,8 @@ MAINMENU MainMenu()
     switch(y)
     {
             case 0: return START;
+            case 1: return START_AI;
+            case 2: return START_AI_REMAKE;
             case 3: return EXIT;
             default: return EXIT;
     }
@@ -391,6 +393,26 @@ void PrintRerollDiceGame(int *dice,bool* fixdice)
     }
     gotoxy(2+5,24); //커서가 마지막주사위 가려서 넣음;
 }
+
+//리롤출력대기모션
+void PrintRerollDiceWaiting(int *dice,bool* fixdice)
+{
+                //리롤출력대기모션
+            PrintPage_3test();
+            gotoxy(2,24); printf("★☆★☆★\n");
+            sleep(1);
+            PrintPage_3();
+            gotoxy(2,24); printf("☆★☆★☆\n");
+            sleep(1);
+            PrintPage_3test();
+            gotoxy(2,24); printf("★☆★☆★\n");
+            sleep(1);
+            PrintPage_3();
+            PrintRerollDiceGame(dice,fixdice);
+            gotoxy(2,26); printf("!   !\n");
+            sleep(2);
+}
+//mode : 어떤 항목의 점수 반환할지
 int ScoreAlgorithm(int *dice, int mode)
 {
     int n[6] = {0}; //123456 각개수체크
@@ -567,6 +589,18 @@ void FixWantNumber(int* dice,bool* fixdice,int want)
         else fixdice[i] = 0;
     }
 }
+//원하는 수 하나 고정시킬건데 예를들어 원하는수가 1일때 1이 여러개면 그중에 한개만 고정시킴(이미 고정이였는이 아닌지는 상관안함)
+void FixWantNumberJustOne(int *dice,bool *fixdice,int want)
+{
+    for(int i =0 ;i<5;i++)
+    {
+        if(dice[i]==want)
+        {
+            fixdice[i] = 1;
+            break;
+        }
+    }
+}
 //배열에서 원하는 수의 '갯수'를 반환하는 함수
 int TheNumberOfNumbers(int* szbuffer,int want,int buffersize =5)
 {
@@ -611,17 +645,236 @@ int TheMostNumber(int * szbuffer,int buffersize=5,int mode = 0)
     }
     return 0;
 }
-//각보고있는거 반환 기록해야하면 ox 각보고있는거면 1-12
-SCOREBOARD AI_DecideAlgorithm(int * dice,bool * fixdice,int individual_turn,int * aIscore)
+//배열에서 가장큰수반환
+int TheBiggestNumber(int *szBuffer,int nSize = 5)
 {
-    return TURN;
-}
-            //알고리즘 정하기(상황판단하기) 바로기록해야할수도 /  
-            //알아야할거 : 주사위던지기횟수,턴, 내가기록한거, 상대점수(이건너무어려울듯)
-            //반환해야할거 : 각보고있는거(ex. s.straight)  턴0이면 기록해야할위치(12개중에)를 각보고잇는거에 저장
-            //원하는거 떳으면 각보고잇는거에 기록해야할위치 저장
+    int nMax = 0;
+    for(int i =0; i<nSize; i++)
+    {
+        if(szBuffer[i]>nMax) nMax = szBuffer[i];
+    }
 
-void AI_FixDice(int * dice,bool * fixdice,SCOREBOARD angle,bool& oX_report)
+    return nMax;
+}
+int AI_DecideAlgorithmMode(int * aIscore)
+{
+//mode 1: 대충설명하면 아랫판보다 윗판이 우선순위 높음. (보너스점수 위함)(왠만하면 항상 mode1)
+//mode 2: choice랑 straight빼고 다했을때 mode2로 함.
+    if(aIscore[OX_Aces] == 0) return 1;
+    if(aIscore[OX_Deuces] == 0) return 1;
+    if(aIscore[OX_Threes] == 0) return 1;
+    if(aIscore[OX_Fours] == 0) return 1;
+    if(aIscore[OX_Fives] == 0) return 1;
+    if(aIscore[OX_Sixes] == 0) return 1;
+    if(aIscore[OX__4ofakind] == 0) return 1;
+    if(aIscore[OX_Yacht] == 0) return 1;
+    if(aIscore[OX_FullHouse] == 0) return 1;
+    return 2;
+}
+//각보고있는거 반환 기록해야하면 ox 각보고있는거면 1-12
+int AI_DecideAlgorithm(int * dice,bool * fixdice,int individual_turn,int * aIscore)
+{
+//알고리즘 정하기(상황판단하기) 
+//알아야할거 : 주사위던지기횟수,턴, 내가기록한거, 상대점수(이건너무어려울듯)
+//반환해야할거 : 각보고있는거(ex. s.straight)
+//원하는거 떳으면 각보고잇는거에 기록해야할위치 저장
+//이미 기록한거는 노리면 안됨!!!!!!!!!!!!!!!!!!!!!
+
+//mode 1: 대충설명하면 아랫판보다 윗판이 우선순위 높음. (보너스점수 위함)(왠만하면 항상 mode1)
+//mode 2: choice랑 straight빼고 다했을때 mode2로 함.
+int mode = AI_DecideAlgorithmMode(aIscore);
+switch(mode)
+{
+case 1: //일반알고리즘 시작
+{
+//0순위. 뭐라도 떴다면?
+int wow = YachtAlgorithm(dice);
+if(wow >= _4ofakind && wow <= Yacht)
+{
+    //0-1. 턴이 안남았다면
+    if(individual_turn == 0)
+    {
+        switch(wow)
+        {
+            case Yacht:
+            {//기록안했으면 하고 했으면 4ofkind로 넘어감
+                if(aIscore[OX_Yacht]==0) return OX_Yacht;
+            }
+            case _4ofakind:
+            {
+                //4ofkind 기록했다면
+                if(aIscore[OX__4ofakind]==1) 
+                {
+                    int want = TheMostNumber(dice);
+                    if(aIscore[Total+want]==1)//윗판의 그숫자도 기록했다면
+                    break;
+                    else return Total+want; //아니라면 기록해라
+                }
+                //4ofkind 기록안했다면
+                else
+                {
+                    int want = TheMostNumber(dice);
+                    if(want == 1 || want == 2) //1이나 2로 4ofkind라면
+                    {
+                        if(aIscore[Total+want]==1) //윗판의 그숫자는 기록했다면
+                        break;
+                        else return Total+want;//아니라면 기록해라
+                    }
+                    //3-6으로 4ofakind라면
+                    else return OX__4ofakind;
+                }
+            }break;
+
+            case FullHouse:
+            {
+                if(aIscore[OX_FullHouse]==1) break;
+                else return OX_FullHouse;
+            }break;
+
+            //기록 안하면 s_straight로 넘어감
+            case L_Straight:
+            {
+                if(aIscore[OX_L_Straight]==0) return OX_L_Straight;
+            }
+            case S_Straight:
+            {
+                if(aIscore[OX_S_Straight]==1) break;
+                else return OX_S_Straight;
+            }break;
+
+
+            default: break;
+        }
+    }
+
+    //0-2. 턴이 남았다면
+    else if(individual_turn>0)
+    {
+        switch(wow)
+        {
+            //return 안하면 4ofakind로 넘어감
+            case Yacht:
+            {
+                if(aIscore[OX_Yacht]==1);//4ofakind로 넘어감
+                else return OX_Yacht;
+            }
+            case _4ofakind:
+            {
+                //yacht 기록했다면
+                if(aIscore[OX_Yacht]==1) 
+                {
+                    //4ofkind기록했다면
+                    if(aIscore[OX__4ofakind]==1)
+                    {
+                        int want = TheMostNumber(dice);
+                        if(aIscore[Total+want]==1)//윗판 그숫자도 기록했다면
+                        break;
+                        else return want;
+                    }
+                    //4ofkind 기록안했다면
+                    else
+                    {
+                    int want = TheMostNumber(dice);
+                    if(want == 1 || want == 2) //1이나 2로 4ofkind라면
+                    {
+                        if(aIscore[Total+want]==1) //윗판의 그숫자는 기록했다면
+                        break;
+                        else return want;//아니라면 
+                    }
+                    //3-6으로 4ofakind라면
+                    else return _4ofakind;
+                    }
+                }
+                //yacht 기록안했다면
+                else
+                {
+                    return Yacht;
+                }
+            }break;
+
+            case FullHouse:
+            {
+                if(aIscore[OX_FullHouse]==1) break;
+                else return OX_FullHouse; //바로기록
+            }break;
+
+            //return 안하면 s_straight로 넘어감
+            case L_Straight:
+            {
+                if(aIscore[OX_L_Straight]==1)
+                {
+                    if(aIscore[OX_S_Straight]==0) return OX_S_Straight;
+                    else break;
+                }
+                else return OX_L_Straight;
+            }
+            case S_Straight:
+            {
+                if(aIscore[OX_S_Straight]==1)
+                {
+                    if(aIscore[OX_L_Straight]==0)
+                    return L_Straight; 
+                    else break;
+                }
+                else return S_Straight;
+            }break;
+
+            default: break;
+        }
+    }
+}
+
+//암것도 안뜨고 or 떴는데 이미 기록된곳이어서 return을 못했으면
+{
+
+//암것도 안뜨고(ex fullhouse), 턴이 없다면!!!
+/*
+아무것도 아니고 같은거 3개면 그거 그냥 박기
+근데 그거 썼으면 우선순위대로 박아야지..
+
+아무것도아니고 같은거 2개이하면 우선순위가
+젤위에서 아래로가됨.(1에서6) 아니면 턴 >=7일때 걍yacht에 박기
+아니면 choice안썼을때 합좀높으면 거기박기 
+위에거 다썼으면 남는거 박아야지머..
+
+
+*/
+
+
+// 암것도 안떴는데 턴이 남아있다면
+
+//1.스트레이트 느낌왔다면?
+//1-1 스몰스트레이트남아있으면
+if(aIscore[OX_S_Straight] == 0)
+{
+
+}
+//1-2 스몰없고 라지만있으면
+if(aIscore[OX_S_Straight] == 1 && aIscore[OX_L_Straight] == 0)
+{
+
+}
+
+//2. 같은거 3개이상떴을때 어떻게할지
+
+//3. 투페어일때 어떻게할지
+
+//4. 원페어일때 어떻게할지
+
+//5. 같은것이 하나도없을때
+
+}
+}
+break;
+case 2:
+break;
+}
+
+return -1;
+}
+
+
+void AI_FixDice(int * dice,bool * fixdice,int angle,bool& oX_report)
 {
     //기록을 해야하는 상황이라면( 턴0 or yacht같은거 떠서)
     if(angle >= OX_Aces && angle <= OX_Yacht)
@@ -674,26 +927,127 @@ void AI_FixDice(int * dice,bool * fixdice,SCOREBOARD angle,bool& oX_report)
             //같은눈이 3개이상
             if(nwant >=3)
             {
-
+                FixWantNumber(dice,fixdice,want);
+                if(nwant >=4)//혹시 4개이상
+                {
+                    for(int i=0; i<5;i++)
+                    {
+                        if(dice[i]==want)
+                        {
+                        fixdice[i] = 0;
+                        nwant --;
+                        }
+                        if(nwant == 3)break;
+                    }
+                }         
             }
             //같은눈이 2개
             else if(nwant ==2)
             {
+                int want2 = TheMostNumber(dice,5,1);
+
                 //2개 2개
+                if(want != want2)
+                {
+                    for(int i=0;i<5;i++)
+                    {
+                        if(dice[i] == want || dice[i] == want2) fixdice[i] = 1;
+                        else fixdice[i] = 0;
+                    }
+                }
                 //그냥 2개
+                else
+                {
+                    FixWantNumber(dice,fixdice,want);
+                }
             }
             // 눈이 다다름
             else
             {
-
+                FixWantNumber(dice,fixdice,want);
             }
         }
         break;
-        //S_Straight
+
+        //Straight 아 그냥 두개 같이 묶어서할래 별로안좋은 알고리즘
         case S_Straight:
-        break;
-        //L_Straight
         case L_Straight:
+        {
+        int n[6] = {0};
+        int index = 0;
+        for(int i=0;i<5;i++)
+        {
+            n[(dice[i])]++; //개수체크배열에 저장
+        }
+
+        //1 2 1 0 0 1
+        std::ostringstream os;
+        for (int i: n) {
+        if(i>0) os << 1;
+        else os << 0;
+        }
+        std::string str(os.str());
+            //l_straight용
+            if(str.find("1111") != string::npos)
+            {
+                index = str.find("1111");
+                FixWantNumber(dice,fixdice,-1); //다풀고
+                FixWantNumberJustOne(dice,fixdice,index+1);
+                FixWantNumberJustOne(dice,fixdice,index+2);
+                FixWantNumberJustOne(dice,fixdice,index+3);
+                FixWantNumberJustOne(dice,fixdice,index+4);
+            }
+
+            //연속3개 ex 123
+            if(str.find("111") != string::npos)
+            {
+                index = str.find("111");
+                FixWantNumber(dice,fixdice,-1); //다풀고
+                FixWantNumberJustOne(dice,fixdice,index+1);
+                FixWantNumberJustOne(dice,fixdice,index+2);
+                FixWantNumberJustOne(dice,fixdice,index+3);
+            }
+            //한칸 떨어진 3개 //1 0 2 1 0 1
+            else if(str.find("1011")!= string::npos)
+            {
+                index = str.find("1011");
+                FixWantNumber(dice,fixdice,-1); //다풀고
+                FixWantNumberJustOne(dice,fixdice,index+1);
+                FixWantNumberJustOne(dice,fixdice,index+3);
+                FixWantNumberJustOne(dice,fixdice,index+4);
+            }
+            else if(str.find("1101")!= string::npos)
+            {
+                index = str.find("1101");
+                FixWantNumber(dice,fixdice,-1); //다풀고
+                FixWantNumberJustOne(dice,fixdice,index+1);
+                FixWantNumberJustOne(dice,fixdice,index+2);
+                FixWantNumberJustOne(dice,fixdice,index+4);
+            }
+
+            //한칸떨어진2개 붙은2개
+            else if(str.find("11")!= string::npos)
+            {
+                index = str.find("11");
+                FixWantNumber(dice,fixdice,-1); //다풀고
+                FixWantNumberJustOne(dice,fixdice,index+1);
+                FixWantNumberJustOne(dice,fixdice,index+2);
+            }
+            else if(str.find("101")!= string::npos)
+            {
+                index = str.find("101");
+                FixWantNumber(dice,fixdice,-1); //다풀고
+                FixWantNumberJustOne(dice,fixdice,index+1);
+                FixWantNumberJustOne(dice,fixdice,index+3);
+            }
+
+            else{
+            //default
+            FixWantNumber(dice,fixdice,-1);
+            }
+        
+
+        }
         break;
 
         //yacht,4ofakind
@@ -947,20 +1301,7 @@ void GamePlay(MAINMENU mode)
             RerollDiceAll(dice,fixdice);
             individual_turn --;
 
-            //출력대기모션
-            PrintPage_3test();
-            gotoxy(2,24); printf("★☆★☆★\n");
-            sleep(1);
-            PrintPage_3();
-            gotoxy(2,24); printf("☆★☆★☆\n");
-            sleep(1);
-            PrintPage_3test();
-            gotoxy(2,24); printf("★☆★☆★\n");
-            sleep(1);
-            PrintPage_3();
-            PrintRerollDiceGame(dice,fixdice);
-            gotoxy(2,26); printf("!   !\n");
-            sleep(2);
+            PrintRerollDiceWaiting(dice,fixdice);
 
             nPage =2;
             break;
@@ -994,23 +1335,108 @@ void GamePlay(MAINMENU mode)
         //첫번째던지기 -> 알고a(고정하기) -> 두번째던지기 ->알고b(고정하기) -> 세번째던지기 -> 알고b(기록하기)
         {
             bool oX_report = false; //기록해야할지 말아야할지
-            SCOREBOARD angle; //각보고있는거
+            int angle; //각보고있는거
 
             while(true)//던지는과정
             {
             if(oX_report) break; //기록해야하면 while 탈출
             RerollDiceAll(dice,fixdice);
+            individual_turn --;
+            {//리롤페이지(3) 출력
+            clean();
+            PrintPage_3();
+            PrintFixDice(dice,fixdice);
+            PrintRerollDiceGame(dice,fixdice);
+            PrintGameScoreBoard(myScore,aIScore);
+            sleep(1);
+            PrintRerollDiceWaiting(dice,fixdice);
+            }
+            {//고정페이지(2)출력
+            clean();
+            PrintPage_2(individual_turn);
+            PrintFixDice(dice,fixdice);
+            PrintRerollDice(dice,fixdice);
+            PrintAlgorithm(dice);
+            PrintGameScoreBoard(myScore,aIScore);
+            }
             angle = AI_DecideAlgorithm(dice,fixdice,individual_turn,aIScore); //알고리즘 정하기(상황판단하기) 바로기록해야할수도 /  
             //알아야할거 : 주사위던지기횟수,턴(점수표에있음), 내가기록한거, 상대점수(이건너무어려울듯)
             //반환해야할거 : 각보고있는거(ex. s.straight)  턴0이면 기록해야할위치(12개중에)를 각보고잇는거에 저장
             //원하는거 떳으면 각보고잇는거에 기록해야할위치 저장
             AI_FixDice(dice,fixdice,angle,oX_report); //알고리즘에따라 주사위 고정시키기 //매개변수에 위에함수 반환값들어가면될듯
-            //다고정해야하면 기록해야하는걸로 알아야하기때문에 ox_report 참조자로 받아.
+            //기록해야하는지 던져야하는지 알려야하기때문에 ox_report 참조자로 받아.
+            {
+            //다시한번 고정페이지(2)출력
+            sleep(3);
+            clean();
+            PrintPage_2(individual_turn);
+            PrintFixDice(dice,fixdice);
+            PrintRerollDice(dice,fixdice);
+            PrintAlgorithm(dice);
+            PrintGameScoreBoard(myScore,aIScore);
             }
+            }
+
+
             //기록
+            {//기록페이지(1)
+            clean();
+            PrintPage_1();
+            PrintFixDice(dice,fixdice);
+            PrintGameScoreBoard(myScore,aIScore);
+            }
+
             //기록하는함수 변수초기화 등
-            //상대턴넘겨주기
-            nPage = 3;
+            {
+                //기록
+                if(whoseturn == 1){
+                if(myScore[y+1+15] != 0) break; //기록되어있으면 못하게
+                {
+                myScore[y+1+15] = 1; //기록여부
+                myScore[y+1] = ScoreAlgorithm(dice,y+1); //점수저장
+                myScore[Total] += myScore[y+1]; //토탈에도 갱신
+                if(y>=0 && y<=5)
+                myScore[SubTotal] += myScore[y+1]; //서브토탈도 갱신
+                if(myScore[SubTotal]>=63) myScore[_35bonus] = 35; //보너스체크
+                }
+                }
+                else
+                {
+                if(aIScore[angle -15] != 0) break; // angle - 15 !!!! //기록안했다면
+                aIScore[angle] = 1; //기록 여부
+                aIScore[angle -15] = ScoreAlgorithm(dice,angle-15); //점수반환해서 저장
+                aIScore[Total] += aIScore[angle-15]; //토탈에도 갱신
+                if(angle-15>=1 && angle-15<=6)
+                aIScore[SubTotal] += aIScore[angle-15];
+                if(aIScore[SubTotal]>=63) aIScore[_35bonus] = 35; //보너스체크
+                }
+                
+                
+
+                //턴 끝나서 상대턴을 위해 변수 초기화
+                individual_turn = 3;
+                x=0;
+                y=0;
+                for(int i =0;i<5;i++)
+                {
+                    fixdice[i] = 0;
+                }       
+                RerollDiceAll(dice,fixdice);
+                //차례 넘겨주기
+                whoseturn *= -1;
+                if(myScore[TURN]>aIScore[TURN]) aIScore[TURN]++;
+                else myScore[TURN]++;
+                //게임끝내는조건
+                if(myScore[TURN]>12)
+                {
+                    nPage =-1; //결과창
+                    break;
+                }
+                nPage = 3;
+
+                break;
+            }
+
             
         }
         return;
@@ -1036,6 +1462,12 @@ int main(void) {
             {
                     clean();
                     GamePlay(START);
+            }
+            break;
+            case START_AI:
+            {
+                    clean();
+                    GamePlay(START_AI);
             }
             break;
             case EXIT:
