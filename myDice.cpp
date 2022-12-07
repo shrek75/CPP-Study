@@ -90,7 +90,7 @@ void gotoxy(int x, int y)
     fflush(stdout);
 }
 
-//https://yunsu3042.github.io/devlog/2018/02/17/mac_%EC%BD%98%EC%86%94%EA%B2%8C%EC%9E%84_%EC%86%8C%EC%BD%94%EB%B0%98/
+//https://yunsu3042.github.io/devlog/2018/02/17
 int _getch(void)
 {
     int ch;
